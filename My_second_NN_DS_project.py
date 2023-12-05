@@ -206,7 +206,7 @@ for b_type in types:
 # label the plot
 plt.xlabel('Energy Star Score', size = 14); plt.ylabel('Плотность', size = 14); 
 plt.title('График плотности Energy Star Scores в завис. от типа зданий', size = 14);
-plt.show()
+plt.legend(); plt.show()
 
 ''' Как видно, тип здания сильно влияет на количество баллов. Офисные здания обычно имеют более высокий балл, а отели более низкий.
 Значит нужно включить тип здания в модель, потому что этот признак влияет на нашу цель. Аналогичный график используем для оценки
@@ -227,18 +227,18 @@ print(boroughs)
 figsize(12, 10)
 
 # Plot each borough distribution of scores
-for borough in boroughs:
+for r_type in boroughs:
     # Select the building type
-    subset = df_c[df_c['Borough'] == borough]
+    subset = df_c[df_c['Borough'] == r_type]
     
     # Density plot of Energy Star scores
     sns.kdeplot(subset['ENERGY STAR Score'].dropna(),
-               label = b_type, fill = False, alpha = 0.8)
+               label = r_type, fill = False, alpha = 0.8)
     
 # label the plot
 plt.xlabel('Energy Star Score', size = 14); plt.ylabel('Плотность', size = 14)
 plt.title('График плотности Energy Star Scores в завис. от района', size = 14)
-plt.show()
+plt.legend(); plt.show()
 
 ''' Как видно, район тоже влияет на балл, хотя и не так сильно, как тип здания. Тем не менее, включим его в модель. Для этих категориальных
 переменных позже выполним one-hot кодирование. Оценим взаимосвязь Energy Star Scores с другими переменными. Сначала используем для этого
@@ -393,7 +393,7 @@ print('Esta pronto!')
 print(features.shape)
 
 ''' Теперь исследуем свойства на коллинеарность. Если какие-либо свойства сильно коррелируют между собой, то они
-оказывают примерно одинаковое влияние на нашу цель (ENERGY STAR Score). Можем удалить их, оставив одно, для упрощения модели.
+оказывают примерно одинаковое влияние на нашу цель (ENERGY STAR Score). Можем удалить часть их, оставив одно, для упрощения модели.
 Например, вот график EUI и Weather Normalized Site EUI, у которых коэффициент корреляции равен 0,9967.'''
 
 plot_data = df_c[['Weather Normalized Site EUI (kBtu/ft²)', 'Site EUI (kBtu/ft²)']].dropna()
@@ -580,3 +580,156 @@ print(X)
 все данные, подготовив их для создания/выбора модели обучения.
 '''
 print('Данные готовы для создания/выбора модели обучения.')
+
+'''  Реализуем в Scikit-Learn модели машинного обучения.
+После всех подготовительных работ процесс создания, обучения и прогона моделей относительно прост. Мы будем использовать
+в Python библиотеку Scikit-Learn, прекрасно документированную и с продуманным синтаксисом построения моделей. Научившись
+создавать модель в Scikit-Learn, мы сможем быстро реализовывать всевозможные алгоритмы.
+
+We will compare five different machine learning models using the great Scikit-Learn library:
+
+1. Linear Regression
+2. Support Vector Machine Regression
+3. Random Forest Regression
+4. Gradient Boosting Regression
+5. K-Nearest Neighbors Regression
+
+To compare the models, we are going to be mostly using the Scikit-Learn defaults for the model hyperparameters. Generally these
+will perform decently, but should be optimized before actually using a model. At first, we just want to determine the baseline
+performance of each model, and then we can select the best performing model for further optimization using hyperparameter tuning.
+Remember that the default hyperparameters will get a model up and running, but nearly always should be adjusted using some sort
+of search to find the best settings for your problem!
+
+One of the best parts about scikit-learn is that all models are implemented in an identical manner: once you know how to build one,
+you can implement an extremely diverse array of models. Here we will implement the entire training and testing procedures for
+a number of models in just a few lines of code.
+'''
+# Function to calculate mean absolute error
+def mae(y_true, y_pred):
+    return np.mean(abs(y_true - y_pred))
+
+# Takes in a model, trains the model, and evaluates the model on the test set
+def fit_and_evaluate(model):
+    
+    # Train the model
+    model.fit(X, y)
+    
+    # Make predictions and evalute
+    model_pred = model.predict(X_test)
+    model_mae = mae(y_test, model_pred)
+    
+    # Return the performance metric
+    return model_mae
+
+lr = LinearRegression()
+lr_mae = fit_and_evaluate(lr)
+
+print('Linear Regression Performance on the test set: MAE = %0.4f' % lr_mae)
+
+#Linear Regression Performance on the test set: MAE = 11.6768
+
+svm = SVR(C = 1000, gamma = 0.1)
+svm_mae = fit_and_evaluate(svm)
+
+print('Support Vector Machine Regression Performance on the test set: MAE = %0.4f' % svm_mae)
+
+#Support Vector Machine Regression Performance on the test set: MAE = 7.3436
+
+random_forest = RandomForestRegressor(random_state=60)
+random_forest_mae = fit_and_evaluate(random_forest)
+
+print('Random Forest Regression Performance on the test set: MAE = %0.4f' % random_forest_mae)
+
+#Random Forest Regression Performance on the test set: MAE = 1.3834
+
+gradient_boosted = GradientBoostingRegressor(random_state=60)
+gradient_boosted_mae = fit_and_evaluate(gradient_boosted)
+
+print('Gradient Boosted Regression Performance on the test set: MAE = %0.4f' % gradient_boosted_mae)
+
+#Gradient Boosted Regression Performance on the test set: MAE = 2.8707
+
+knn = KNeighborsRegressor(n_neighbors=10)
+knn_mae = fit_and_evaluate(knn)
+
+print('K-Nearest Neighbors Regression Performance on the test set: MAE = %0.4f' % knn_mae)
+
+#K-Nearest Neighbors Regression Performance on the test set: MAE = 12.0346
+
+plt.style.use('fivethirtyeight')
+figsize(8, 6)
+
+# Dataframe to hold the results
+model_comparison = pd.DataFrame({'model': ['Linear Regression', 'Support Vector Machine',
+                                           'Random Forest', 'Gradient Boosted',
+                                            'K-Nearest Neighbors'],
+                                 'mae': [lr_mae, svm_mae, random_forest_mae, 
+                                         gradient_boosted_mae, knn_mae]})
+
+# Horizontal bar chart of test mae
+model_comparison.sort_values('mae', ascending = False).plot(x = 'model', y = 'mae', kind = 'barh',
+                                                           color = 'red', edgecolor = 'black')
+
+# Plot formatting
+plt.ylabel(''); plt.yticks(size = 14); plt.xlabel('Mean Absolute Error'); plt.xticks(size = 14)
+plt.title('Model Comparison on Test MAE', size = 20)
+plt.show()
+
+
+# Takes in a model, trains the model, and evaluates the model on the test set
+def sim(model):
+    
+    # Train the model
+    model.fit(X, y)
+    
+    # Make predictions and evalute
+    model_pred = model.predict(X_test)
+        
+    # Return the performance metric
+    return model_pred
+
+random_forest = RandomForestRegressor(random_state=60)
+random_forest_pred = sim(random_forest)
+
+figsize(8, 8)
+
+# Density plot of the predictions by Random Forest Regression and the test values
+sns.kdeplot(random_forest_pred, label = 'Predictions')
+sns.kdeplot(y_test, label = 'Test values')
+
+# Label the plot
+plt.xlabel('Energy Star Score'); plt.ylabel('Density'); plt.legend()
+plt.title('Test Values and Random Forest Regr Prediction')
+plt.show()
+
+figsize = (6, 6)
+
+# Calculate the residuals 
+residuals = random_forest_pred - y_test
+
+# Plot the residuals in a histogram
+plt.hist(residuals, color = 'red', bins = 20,
+         edgecolor = 'black')
+plt.xlabel('Error'); plt.ylabel('Count')
+plt.title('Distribution of Residuals')
+plt.show()
+
+''' Как видно из последнего рисунка, модель использующая Random Forest Regression, предсказывает результаты очень близкие к тестовым (MAE = 1.3834),
+даже с параметрами по умолчанию (без дополнительной подстройки гиперпараметров). Погрешности имеют почти нормальное распределение, хотя есть
+несколько больших положительных значений, когда прогноз модели сильно отличается от реальных данных.
+Отметим, что это значительно отличается от результатов оригинального исследования WillKoehrsen:
+https://github.com/WillKoehrsen/machine-learning-project-walkthrough/blob/master/Machine%20Learning%20Project%20Part%202.ipynb
+где даже после настройки гиперпараметров  MAE = 9.0446.
+По-видимому, это связано с тем, что данные об энергопотреблении зданий в Нью-Йорке используемые в этой работе
+
+https://data.cityofnewyork.us/api/views/utpj-74fz/rows.csv'
+'Energy_and_Water_Data_Disclosure_for_Local_Law_84_2017__Data_for_Calendar_Year_2016_.csv','wb'
+
+отличаются от данных, используемых в работе WillKoehrsen прежде всего наличием значительных положительных линейных корреляций
+после логарифмирование:
+
+log_Avoided Emissions - Offsite Green Power (Metric Tons CO2e)  =  0.528102
+log_Green Power - Offsite (kWh)  and  0.550166.
+
+что, скорее всего, и позволило получить очень хорошие предсказания модели.
+'''
